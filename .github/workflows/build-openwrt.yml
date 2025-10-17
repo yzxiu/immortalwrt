@@ -21,6 +21,9 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     timeout-minutes: 360
+    container:
+      image: ghcr.io/openwrt/buildbot/buildworker-v3.8.0:v9
+      options: --user root
     strategy:
       fail-fast: false  # 某个平台失败不影响其他平台继续编译
       matrix:
@@ -31,9 +34,6 @@ jobs:
             config: .config.tr3000
           - name: x64
             config: .config.x64
-    container:
-      image: openwrtorg/sdk:openwrt-23.05
-      options: --privileged
     steps:
       - name: Checkout
         uses: actions/checkout@v4
