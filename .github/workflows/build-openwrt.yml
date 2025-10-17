@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 360
     container:
-      image: ghcr.io/openwrt/buildbot/buildworker-v3.8.0:v9
+      image: q946666800/openwrt-build:v23.05
     strategy:
       fail-fast: false  # 某个平台失败不影响其他平台继续编译
       matrix:
