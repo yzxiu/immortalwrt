@@ -205,11 +205,11 @@ jobs:
         run: |
           echo "release_tag=ImmortalWrt-$(date +%Y%m%d-%H%M)" >> $GITHUB_OUTPUT
 
-      - name: 创建 Release 并上传固件（分开上传三个文件）
+      - name: 创建 Release 并上传固件
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.release_tag }}
-          name: ImmortalWrt 固件 ${{ steps.tag.outputs.release_tag }}
+          name: ${{ steps.tag.outputs.release_tag }}
           body: |
             ## 🎉 ImmortalWrt 自动构建固件
             
@@ -219,20 +219,15 @@ jobs:
             
             ### 📦 包含的固件（三个独立文件）
             
-            | 设备 | 固件文件 | 大小 |
-            |------|---------|------|
-            | **GL.iNet GL-MT3000** | `immortalwrt-mediatek-filogic-glinet_gl-mt3000-squashfs-sysupgrade.bin` | 点击下载 ⬇️ |
-            | **Cudy TR3000 v1** | `immortalwrt-mediatek-filogic-cudy_tr3000-v1-squashfs-sysupgrade.bin` | 点击下载 ⬇️ |
-            | **x86-64 (通用)** | `immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz` | 点击下载 ⬇️ |
+            | 设备 | 固件文件 |
+            |------|---------|
+            | **GL.iNet GL-MT3000** | `immortalwrt-mediatek-filogic-glinet_gl-mt3000-squashfs-sysupgrade.bin` |
+            | **Cudy TR3000 v1** | `immortalwrt-mediatek-filogic-cudy_tr3000-v1-squashfs-sysupgrade.bin` |
+            | **x86-64 (通用)** | `immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz` |
             
             ### 📝 使用说明
             
-            1. **路由器设备** (MT3000/TR3000): 
-               - 在路由器管理界面上传对应的 `.bin` 文件进行升级
-               
-            2. **x86-64 设备**: 
-               - 解压 `.img.gz` 文件
-               - 使用 dd 或 Rufus 等工具写入 U盘或硬盘
+            - 通过 SSH 将固件上传到 `/tmp`，执行 `sysupgrade -c /tmp/<固件文件名>.bin` 进行升级并保留配置
             
             ⚠️ **注意**: 升级前请备份重要配置！
           files: |
