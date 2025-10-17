@@ -93,6 +93,21 @@ jobs:
           echo "=== 磁盘使用情况 ==="
           df -h
 
+      - name: 清理 build_dir 节省空间
+        if: success()
+        run: |
+          echo "=== 清理前 build_dir 大小 ==="
+          if [ -d build_dir ]; then
+            du -sh build_dir 2>/dev/null || echo "无法获取 build_dir 大小"
+            echo "删除 build_dir 文件夹以节省空间..."
+            rm -rf build_dir
+            echo "✓ build_dir 已删除"
+          else
+            echo "build_dir 文件夹不存在"
+          fi
+          echo "=== 清理后磁盘使用情况 ==="
+          df -h
+
       - name: 提取固件文件
         if: success()
         run: |
