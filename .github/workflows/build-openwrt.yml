@@ -21,20 +21,29 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     timeout-minutes: 360
+    strategy:
+      fail-fast: false  # 某个平台失败不影响其他平台继续编译
+      matrix:
+        platform:
+          - name: mt3000
+            config: .config.mt3000
+          - name: tr3000
+            config: .config.tr3000
+          - name: x64
+            config: .config.x64
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: 缓存 dl 目录（下载的源码包）
+      - name: 缓存 dl 目录（下载的源码包 - 跨平台共享）
         uses: actions/cache@v4
         with:
           path: dl
           key: dl-${{ runner.os }}-${{ hashFiles('feeds.conf.default') }}
           restore-keys: |
             dl-${{ runner.os }}-
-          save-always: true
 
-      - name: 缓存 feeds 目录
+      - name: 缓存 feeds 目录（跨平台共享）
         uses: actions/cache@v4
         with:
           path: |
@@ -43,17 +52,15 @@ jobs:
           key: feeds-${{ runner.os }}-${{ hashFiles('feeds.conf.default') }}
           restore-keys: |
             feeds-${{ runner.os }}-
-          save-always: true
 
       - name: 缓存 staging_dir（工具链和依赖库）
         uses: actions/cache@v4
         with:
           path: staging_dir
-          key: staging-${{ runner.os }}-${{ hashFiles('.config', 'feeds.conf.default') }}-${{ github.sha }}
+          key: staging-${{ runner.os }}-${{ matrix.platform.name }}-${{ hashFiles(matrix.platform.config, 'feeds.conf.default') }}-${{ github.sha }}
           restore-keys: |
-            staging-${{ runner.os }}-${{ hashFiles('.config', 'feeds.conf.default') }}-
-            staging-${{ runner.os }}-
-          save-always: true
+            staging-${{ runner.os }}-${{ matrix.platform.name }}-${{ hashFiles(matrix.platform.config, 'feeds.conf.default') }}-
+            staging-${{ runner.os }}-${{ matrix.platform.name }}-
 
       - name: 安装构建依赖（参考 OpenWrt 官方文档）
         run: |
@@ -75,11 +82,9 @@ jobs:
 
       - name: 配置
         run: |
-          # 如果已有 .config 文件则备份
-          if [ -f .config ]; then
-            cp .config .config.backup
-          fi
-          # 生成默认配置
+          # 复制对应平台的配置文件
+          cp ${{ matrix.platform.config }} .config
+          # 生成完整配置
           make defconfig
 
       - name: 下载源码包
@@ -111,7 +116,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: openwrt-bin-${{ github.run_id }}
+          name: openwrt-bin-${{ matrix.platform.name }}-${{ github.run_id }}
           path: bin
           if-no-files-found: warn
 
@@ -119,7 +124,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: openwrt-logs-${{ github.run_id }}
+          name: openwrt-logs-${{ matrix.platform.name }}-${{ github.run_id }}
           path: |
             logs
           if-no-files-found: ignore
