@@ -32,6 +32,7 @@ jobs:
           key: dl-${{ runner.os }}-${{ hashFiles('feeds.conf.default') }}
           restore-keys: |
             dl-${{ runner.os }}-
+          save-always: true
 
       - name: 缓存 feeds 目录
         uses: actions/cache@v4
@@ -42,6 +43,7 @@ jobs:
           key: feeds-${{ runner.os }}-${{ hashFiles('feeds.conf.default') }}
           restore-keys: |
             feeds-${{ runner.os }}-
+          save-always: true
 
       - name: 缓存 staging_dir（工具链和依赖库）
         uses: actions/cache@v4
@@ -51,6 +53,7 @@ jobs:
           restore-keys: |
             staging-${{ runner.os }}-${{ hashFiles('.config', 'feeds.conf.default') }}-
             staging-${{ runner.os }}-
+          save-always: true
 
       - name: 安装构建依赖（参考 OpenWrt 官方文档）
         run: |
