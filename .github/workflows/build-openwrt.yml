@@ -83,24 +83,22 @@ jobs:
           ./scripts/feeds install -a
 
       - name: Configure
+        env:
+          TERM: xterm
         run: |
-          if [ "${{ github.event.inputs.defconfig }}" = "yes" ]; then
-            # 若仓库内已有 .config，则使用并做最小化更新
-            if [ -f .config ]; then
-              cp .config .config.bak
-            fi
-            # 合并 ccache 使能项
-            [ -f .config ] && cat .config || true
-            [ -f .config.ccache ] && cat .config.ccache >> .config || cp .config.ccache .config
-            make defconfig
-          else
-            # 不执行 defconfig，确保 ccache 仍被启用
-            [ -f .config.ccache ] && cat .config.ccache >> .config || true
+          # 统一在非交互环境下生成有效配置，避免触发 menuconfig
+          if [ -f .config ]; then
+            cp .config .config.bak
           fi
+          # 确保启用 ccache
+          echo "CONFIG_CCACHE=y" >> .config
+          # 生成完整配置（非交互）
+          make defconfig
 
       - name: Download sources (dl)
         env:
           FORCE_UNSAFE_CONFIGURE: 1
+          TERM: xterm
         run: |
           # 参考 OpenWrt 文档，预下载可加速
           make download -j$(nproc) V=s
@@ -109,6 +107,7 @@ jobs:
         env:
           FORCE_UNSAFE_CONFIGURE: 1
           PATH: /usr/lib/ccache:$PATH
+          TERM: xterm
         run: |
           set -e
           TARGET="${{ github.event.inputs.target }}"
