@@ -53,15 +53,6 @@ jobs:
           restore-keys: |
             feeds-${{ runner.os }}-
 
-      - name: 缓存 staging_dir（工具链和依赖库）
-        uses: actions/cache@v4
-        with:
-          path: staging_dir
-          key: staging-${{ runner.os }}-${{ matrix.platform.name }}-${{ hashFiles(matrix.platform.config, 'feeds.conf.default') }}-${{ github.sha }}
-          restore-keys: |
-            staging-${{ runner.os }}-${{ matrix.platform.name }}-${{ hashFiles(matrix.platform.config, 'feeds.conf.default') }}-
-            staging-${{ runner.os }}-${{ matrix.platform.name }}-
-
       - name: 安装构建依赖（参考 OpenWrt 官方文档）
         run: |
           sudo apt update
@@ -101,13 +92,8 @@ jobs:
       - name: 检查编译产物和缓存大小
         if: always()
         run: |
-          echo "=== 编译产物大小 ==="
-          du -sh bin 2>/dev/null || echo "bin 目录不存在"
-          echo ""
-          echo "=== 缓存目录大小 ==="
-          du -sh dl 2>/dev/null || echo "dl 目录为空"
-          du -sh feeds 2>/dev/null || echo "feeds 目录为空"
-          du -sh staging_dir 2>/dev/null || echo "staging_dir 目录为空"
+          echo "=== 工作目录下所有文件夹大小 ==="
+          du -sh */ 2>/dev/null | sort -hr || echo "无文件夹"
           echo ""
           echo "=== 磁盘使用情况 ==="
           df -h
