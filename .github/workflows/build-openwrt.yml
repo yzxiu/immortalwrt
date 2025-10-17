@@ -15,7 +15,7 @@ on:
       - openwrt-23.05
 
 permissions:
-  contents: read
+  contents: write  # 需要写权限来创建 release
 
 jobs:
   build:
@@ -112,7 +112,51 @@ jobs:
           echo "=== 磁盘使用情况 ==="
           df -h
 
-      - name: 上传编译产物
+      - name: 提取固件文件
+        if: success()
+        run: |
+          mkdir -p firmware
+          case "${{ matrix.platform.name }}" in
+            mt3000)
+              if [ -f bin/targets/mediatek/filogic/immortalwrt-mediatek-filogic-glinet_gl-mt3000-squashfs-sysupgrade.bin ]; then
+                cp bin/targets/mediatek/filogic/immortalwrt-mediatek-filogic-glinet_gl-mt3000-squashfs-sysupgrade.bin firmware/
+                echo "✓ MT3000 固件已提取"
+              else
+                echo "✗ MT3000 固件文件不存在"
+                exit 1
+              fi
+              ;;
+            tr3000)
+              if [ -f bin/targets/mediatek/filogic/immortalwrt-mediatek-filogic-cudy_tr3000-v1-squashfs-sysupgrade.bin ]; then
+                cp bin/targets/mediatek/filogic/immortalwrt-mediatek-filogic-cudy_tr3000-v1-squashfs-sysupgrade.bin firmware/
+                echo "✓ TR3000 固件已提取"
+              else
+                echo "✗ TR3000 固件文件不存在"
+                exit 1
+              fi
+              ;;
+            x64)
+              if [ -f bin/targets/x86/64/immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz ]; then
+                cp bin/targets/x86/64/immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz firmware/
+                echo "✓ x64 固件已提取"
+              else
+                echo "✗ x64 固件文件不存在"
+                exit 1
+              fi
+              ;;
+          esac
+          echo "=== 固件文件列表 ==="
+          ls -lh firmware/
+
+      - name: 上传固件文件（用于 release）
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.platform.name }}
+          path: firmware/*
+          if-no-files-found: error
+
+      - name: 上传完整编译产物
         if: success()
         uses: actions/upload-artifact@v4
         with:
@@ -128,4 +172,73 @@ jobs:
           path: |
             logs
           if-no-files-found: ignore
+
+  release:
+    needs: build
+    runs-on: ubuntu-22.04
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: 下载所有固件文件
+        uses: actions/download-artifact@v4
+        with:
+          pattern: firmware-*
+          path: ./all-firmware
+          merge-multiple: false
+
+      - name: 整理固件文件
+        run: |
+          mkdir -p release-files
+          # 从各平台的 artifact 中复制固件到统一目录
+          find ./all-firmware -type f \( -name "*.bin" -o -name "*.img.gz" \) | while read file; do
+            cp "$file" release-files/
+          done
+          echo "=== 准备发布的固件列表 ==="
+          ls -lh release-files/
+          # 验证三个固件文件都存在
+          [ -f release-files/immortalwrt-mediatek-filogic-glinet_gl-mt3000-squashfs-sysupgrade.bin ] || (echo "❌ MT3000 固件缺失" && exit 1)
+          [ -f release-files/immortalwrt-mediatek-filogic-cudy_tr3000-v1-squashfs-sysupgrade.bin ] || (echo "❌ TR3000 固件缺失" && exit 1)
+          [ -f release-files/immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz ] || (echo "❌ x64 固件缺失" && exit 1)
+          echo "✅ 所有固件文件已就绪"
+
+      - name: 生成 Release Tag
+        id: tag
+        run: |
+          echo "release_tag=ImmortalWrt-$(date +%Y%m%d-%H%M)" >> $GITHUB_OUTPUT
+
+      - name: 创建 Release 并上传固件（分开上传三个文件）
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.release_tag }}
+          name: ImmortalWrt 固件 ${{ steps.tag.outputs.release_tag }}
+          body: |
+            ## 🎉 ImmortalWrt 自动构建固件
+            
+            **构建时间**: `${{ steps.tag.outputs.release_tag }}`
+            **源代码分支**: `${{ github.ref_name }}`
+            **Commit**: `${{ github.sha }}`
+            
+            ### 📦 包含的固件（三个独立文件）
+            
+            | 设备 | 固件文件 | 大小 |
+            |------|---------|------|
+            | **GL.iNet GL-MT3000** | `immortalwrt-mediatek-filogic-glinet_gl-mt3000-squashfs-sysupgrade.bin` | 点击下载 ⬇️ |
+            | **Cudy TR3000 v1** | `immortalwrt-mediatek-filogic-cudy_tr3000-v1-squashfs-sysupgrade.bin` | 点击下载 ⬇️ |
+            | **x86-64 (通用)** | `immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz` | 点击下载 ⬇️ |
+            
+            ### 📝 使用说明
+            
+            1. **路由器设备** (MT3000/TR3000): 
+               - 在路由器管理界面上传对应的 `.bin` 文件进行升级
+               
+            2. **x86-64 设备**: 
+               - 解压 `.img.gz` 文件
+               - 使用 dd 或 Rufus 等工具写入 U盘或硬盘
+            
+            ⚠️ **注意**: 升级前请备份重要配置！
+          files: |
+            release-files/immortalwrt-mediatek-filogic-glinet_gl-mt3000-squashfs-sysupgrade.bin
+            release-files/immortalwrt-mediatek-filogic-cudy_tr3000-v1-squashfs-sysupgrade.bin
+            release-files/immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz
+          draft: false
+          prerelease: false
 
