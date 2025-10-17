@@ -25,6 +25,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: 缓存 dl 目录（下载的源码包）
+        uses: actions/cache@v4
+        with:
+          path: dl
+          key: dl-${{ runner.os }}-${{ hashFiles('feeds.conf.default') }}
+          restore-keys: |
+            dl-${{ runner.os }}-
+
       - name: 安装构建依赖（参考 OpenWrt 官方文档）
         run: |
           sudo apt update
@@ -68,6 +76,10 @@ jobs:
         run: |
           echo "=== 编译产物大小 ==="
           du -sh bin 2>/dev/null || echo "bin 目录不存在"
+          echo ""
+          echo "=== 下载缓存大小 ==="
+          du -sh dl 2>/dev/null || echo "dl 目录为空"
+          echo ""
           echo "=== 磁盘使用情况 ==="
           df -h
 
