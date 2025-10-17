@@ -13,9 +13,10 @@ on:
         default: "yes"
   push:
     branches:
-      - main
-      - master
+      - openwrt-23.05
   pull_request:
+    branches:
+      - openwrt-23.05
 
 permissions:
   contents: read
