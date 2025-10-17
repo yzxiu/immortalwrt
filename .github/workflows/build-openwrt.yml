@@ -4,13 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       target:
-        description: "Target make target, e.g., world or V=s"
+        description: "Target make target, e.g., world"
         required: false
         default: "world"
-      defconfig:
-        description: "Run defconfig before build (yes/no)"
-        required: false
-        default: "yes"
   push:
     branches:
       - openwrt-23.05
@@ -21,11 +17,6 @@ on:
 permissions:
   contents: read
 
-env:
-  CCACHE_DIR: ${{ github.workspace }}/.ccache
-  DL_DIR: ${{ github.workspace }}/dl
-  BUILD_ROOT: ${{ github.workspace }}
-
 jobs:
   build:
     runs-on: ubuntu-22.04
@@ -34,111 +25,66 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup apt dependencies (per OpenWrt Wiki)
+      - name: 安装构建依赖（参考 OpenWrt 官方文档）
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential make coreutils clang flex bison g++ gawk \
+          sudo apt update
+          sudo apt install -y build-essential clang flex bison g++ gawk \
             gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev \
-            python3-setuptools rsync swig unzip zlib1g-dev file wget time
+            python3-setuptools rsync swig unzip zlib1g-dev file wget
 
-      - name: Prepare directories
+      - name: 显示工具版本
         run: |
-          mkdir -p "$CCACHE_DIR" "$DL_DIR"
+          gcc --version
+          make --version
+          python3 --version
 
-      - name: Cache dl
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.DL_DIR }}
-          key: dl-${{ runner.os }}-${{ hashFiles('feeds.conf*', 'feeds.conf.default', 'scripts/download.pl') }}
-          restore-keys: |
-            dl-${{ runner.os }}-
-
-      - name: Cache ccache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.sha }}
-          restore-keys: |
-            ccache-${{ runner.os }}-${{ github.ref_name }}-
-            ccache-${{ runner.os }}-
-
-      - name: Enable ccache
-        run: |
-          which ccache || sudo apt-get install -y ccache
-          echo "CONFIG_CCACHE=y" >> .config.ccache
-          ./scripts/feeds update -a || true
-          ./scripts/feeds install -a || true
-
-      - name: Show tool versions
-        run: |
-          gcc --version || true
-          clang --version || true
-          make -v || true
-          python3 -V || true
-
-      - name: Update & install feeds
+      - name: 更新和安装 feeds
         run: |
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: Configure
-        env:
-          TERM: xterm
+      - name: 配置
         run: |
-          # 统一在非交互环境下生成有效配置，避免触发 menuconfig
+          # 如果已有 .config 文件则备份
           if [ -f .config ]; then
-            cp .config .config.bak
+            cp .config .config.backup
           fi
-          # 确保启用 ccache
-          echo "CONFIG_CCACHE=y" >> .config
-          # 生成完整配置（非交互）
+          # 生成默认配置
           make defconfig
 
-      - name: Download sources (dl)
-        env:
-          FORCE_UNSAFE_CONFIGURE: 1
-          TERM: xterm
+      - name: 下载源码包
         run: |
-          # 参考 OpenWrt 文档，预下载可加速
           make download -j$(nproc) V=s
 
-      - name: Build
-        env:
-          FORCE_UNSAFE_CONFIGURE: 1
-          PATH: /usr/lib/ccache:$PATH
-          TERM: xterm
+      - name: 编译
         run: |
-          set -e
           TARGET="${{ github.event.inputs.target }}"
           if [ -z "$TARGET" ]; then TARGET=world; fi
-          echo "make $TARGET -j$(nproc)"
+          echo "开始编译: make $TARGET -j$(nproc)"
           make $TARGET -j$(nproc) V=s
 
-      - name: Summarize space usage
+      - name: 检查编译产物
         if: always()
         run: |
-          du -sh bin || true
-          du -sh $DL_DIR || true
-          du -sh $CCACHE_DIR || true
+          echo "=== 编译产物大小 ==="
+          du -sh bin 2>/dev/null || echo "bin 目录不存在"
+          echo "=== 磁盘使用情况 ==="
+          df -h
 
-      - name: Upload bin directory
-        if: always()
+      - name: 上传编译产物
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: openwrt-bin-${{ github.run_id }}
-          path: |
-            bin
+          path: bin
           if-no-files-found: warn
 
-      - name: Upload build logs
+      - name: 上传编译日志（失败时）
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: openwrt-logs-${{ github.run_id }}
           path: |
             logs
-            build_dir/target-*/linux-*/linux-*/.config* || true
           if-no-files-found: ignore
-
 
