@@ -130,8 +130,7 @@ jobs:
           TARGET="${{ github.event.inputs.target }}"
           if [ -z "$TARGET" ]; then TARGET=world; fi
           echo "开始编译: make $TARGET -j$(nproc)"
-          # 使用更保守的并行数和减少输出
-          make $TARGET -j$(( $(nproc) / 2 )) V=0
+          make $TARGET -j$(nproc) V=s
 
       - name: 检查编译产物和缓存大小
         if: always()
