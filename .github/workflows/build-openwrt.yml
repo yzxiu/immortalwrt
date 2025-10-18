@@ -77,14 +77,21 @@ jobs:
       - name: 设置编译目录到挂载空间
         run: |
           echo "=== 设置编译目录到挂载空间 ==="
-          # 在挂载空间创建编译目录
-          mkdir -p /mnt/openwrt-build
+          # 检查挂载点权限
+          ls -la /mnt/ || echo "挂载点不存在或无权限"
+          # 使用sudo创建目录并设置权限
+          sudo mkdir -p /mnt/openwrt-build/build_dir
+          sudo mkdir -p /mnt/openwrt-build/staging_dir
+          sudo mkdir -p /mnt/openwrt-build/tmp
+          sudo chown -R $(whoami):$(whoami) /mnt/openwrt-build
+          sudo chmod -R 755 /mnt/openwrt-build
+          echo "✓ 成功创建挂载空间目录"
           # 创建符号链接将编译目录重定向到挂载空间
-          ln -sf /mnt/openwrt-build build_dir
-          ln -sf /mnt/openwrt-build staging_dir
-          ln -sf /mnt/openwrt-build tmp
+          ln -sf /mnt/openwrt-build/build_dir build_dir
+          ln -sf /mnt/openwrt-build/staging_dir staging_dir
+          ln -sf /mnt/openwrt-build/tmp tmp
           echo "=== 挂载空间设置完成 ==="
-          ls -la /mnt/openwrt-build/ || echo "目录创建失败"
+          ls -la /mnt/openwrt-build/
           df -h /mnt/
 
       - name: 更新和安装 feeds
