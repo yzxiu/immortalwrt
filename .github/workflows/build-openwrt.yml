@@ -23,6 +23,7 @@ jobs:
     timeout-minutes: 360
     container:
       image: q946666800/openwrt-build:v23.05_2
+      options: --mount type=bind,source=/mnt,target=/mnt
     strategy:
       fail-fast: false  # 某个平台失败不影响其他平台继续编译
       matrix:
@@ -62,6 +63,8 @@ jobs:
           python3 --version
           echo "=== 初始磁盘空间检查 ==="
           df -h
+          echo "=== 挂载空间检查 ==="
+          ls -la /mnt/ || echo "挂载点不存在"
           echo "=== 清理系统临时文件 ==="
           # 清理系统临时文件
           sudo rm -rf /tmp/* 2>/dev/null || true
@@ -70,6 +73,19 @@ jobs:
           sudo find /var/log -name "*.log" -size +10M -delete 2>/dev/null || true
           echo "=== 清理后磁盘空间 ==="
           df -h
+
+      - name: 设置编译目录到挂载空间
+        run: |
+          echo "=== 设置编译目录到挂载空间 ==="
+          # 在挂载空间创建编译目录
+          mkdir -p /mnt/openwrt-build
+          # 创建符号链接将编译目录重定向到挂载空间
+          ln -sf /mnt/openwrt-build build_dir
+          ln -sf /mnt/openwrt-build staging_dir
+          ln -sf /mnt/openwrt-build tmp
+          echo "=== 挂载空间设置完成 ==="
+          ls -la /mnt/openwrt-build/ || echo "目录创建失败"
+          df -h /mnt/
 
       - name: 更新和安装 feeds
         run: |
