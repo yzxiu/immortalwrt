@@ -79,6 +79,8 @@ jobs:
           echo "=== 设置编译目录到挂载空间 ==="
           # 检查挂载点权限
           ls -la /mnt/ || echo "挂载点不存在或无权限"
+          # 清空挂载空间
+          sudo rm -rf /mnt/openwrt-build/* 2>/dev/null || true
           # 使用sudo创建目录并设置权限
           sudo mkdir -p /mnt/openwrt-build/build_dir
           sudo mkdir -p /mnt/openwrt-build/staging_dir
@@ -155,25 +157,25 @@ jobs:
           echo "=== 清理后磁盘使用情况 ==="
           df -h
 
-      - name: 深度清理所有临时文件
-        if: success()
-        run: |
-          echo "=== 深度清理开始 ==="
-          # 清理所有可能的临时文件
-          rm -rf build_dir 2>/dev/null || true
-          rm -rf staging_dir 2>/dev/null || true
-          rm -rf tmp 2>/dev/null || true
-          rm -rf logs 2>/dev/null || true
-          # 清理编译过程中的中间文件
-          find . -name "*.o" -delete 2>/dev/null || true
-          find . -name "*.a" -delete 2>/dev/null || true
-          find . -name "*.so" -delete 2>/dev/null || true
-          find . -name "*.tmp" -delete 2>/dev/null || true
-          # 清理系统临时文件
-          sudo rm -rf /tmp/* 2>/dev/null || true
-          sudo rm -rf /var/tmp/* 2>/dev/null || true
-          echo "=== 最终磁盘使用情况 ==="
-          df -h
+      # - name: 深度清理所有临时文件
+      #   if: success()
+      #   run: |
+      #     echo "=== 深度清理开始 ==="
+      #     # 清理所有可能的临时文件
+      #     rm -rf build_dir 2>/dev/null || true
+      #     rm -rf staging_dir 2>/dev/null || true
+      #     rm -rf tmp 2>/dev/null || true
+      #     rm -rf logs 2>/dev/null || true
+      #     # 清理编译过程中的中间文件
+      #     find . -name "*.o" -delete 2>/dev/null || true
+      #     find . -name "*.a" -delete 2>/dev/null || true
+      #     find . -name "*.so" -delete 2>/dev/null || true
+      #     find . -name "*.tmp" -delete 2>/dev/null || true
+      #     # 清理系统临时文件
+      #     sudo rm -rf /tmp/* 2>/dev/null || true
+      #     sudo rm -rf /var/tmp/* 2>/dev/null || true
+      #     echo "=== 最终磁盘使用情况 ==="
+      #     df -h
 
       - name: 提取固件文件
         if: success()
