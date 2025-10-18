@@ -55,11 +55,21 @@ jobs:
           restore-keys: |
             feeds-${{ runner.os }}-
 
-      - name: 显示工具版本
+      - name: 显示工具版本和磁盘空间
         run: |
           gcc --version
           make --version
           python3 --version
+          echo "=== 初始磁盘空间检查 ==="
+          df -h
+          echo "=== 清理系统临时文件 ==="
+          # 清理系统临时文件
+          sudo rm -rf /tmp/* 2>/dev/null || true
+          sudo rm -rf /var/tmp/* 2>/dev/null || true
+          # 清理可能的日志文件
+          sudo find /var/log -name "*.log" -size +10M -delete 2>/dev/null || true
+          echo "=== 清理后磁盘空间 ==="
+          df -h
 
       - name: 更新和安装 feeds
         run: |
@@ -77,12 +87,26 @@ jobs:
         run: |
           make download -j$(nproc) V=s
 
+      - name: 编译前深度清理
+        run: |
+          echo "=== 编译前深度清理 ==="
+          # 清理可能的编译残留
+          rm -rf build_dir 2>/dev/null || true
+          rm -rf staging_dir 2>/dev/null || true
+          rm -rf tmp 2>/dev/null || true
+          # 清理系统缓存
+          sudo apt-get clean 2>/dev/null || true
+          sudo rm -rf /var/cache/apt/archives/* 2>/dev/null || true
+          echo "=== 清理后磁盘空间 ==="
+          df -h
+
       - name: 编译
         run: |
           TARGET="${{ github.event.inputs.target }}"
           if [ -z "$TARGET" ]; then TARGET=world; fi
           echo "开始编译: make $TARGET -j$(nproc)"
-          make $TARGET -j$(nproc) V=s
+          # 使用更保守的并行数和减少输出
+          make $TARGET -j$(( $(nproc) / 2 )) V=0
 
       - name: 检查编译产物和缓存大小
         if: always()
@@ -106,6 +130,26 @@ jobs:
             echo "build_dir 文件夹不存在"
           fi
           echo "=== 清理后磁盘使用情况 ==="
+          df -h
+
+      - name: 深度清理所有临时文件
+        if: success()
+        run: |
+          echo "=== 深度清理开始 ==="
+          # 清理所有可能的临时文件
+          rm -rf build_dir 2>/dev/null || true
+          rm -rf staging_dir 2>/dev/null || true
+          rm -rf tmp 2>/dev/null || true
+          rm -rf logs 2>/dev/null || true
+          # 清理编译过程中的中间文件
+          find . -name "*.o" -delete 2>/dev/null || true
+          find . -name "*.a" -delete 2>/dev/null || true
+          find . -name "*.so" -delete 2>/dev/null || true
+          find . -name "*.tmp" -delete 2>/dev/null || true
+          # 清理系统临时文件
+          sudo rm -rf /tmp/* 2>/dev/null || true
+          sudo rm -rf /var/tmp/* 2>/dev/null || true
+          echo "=== 最终磁盘使用情况 ==="
           df -h
 
       - name: 提取固件文件
