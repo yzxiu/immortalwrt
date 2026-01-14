@@ -201,6 +201,8 @@ jobs:
               ;;
             x64)
               if [ -f bin/targets/x86/64/immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz ]; then
+                # 查看构建文件
+                ls -alh bin/targets/x86/64/
                 cp bin/targets/x86/64/immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz firmware/
                 echo "✓ x64 固件已提取"
               else
