@@ -363,8 +363,11 @@ jobs:
         id: tag
         run: |
           RELEASE_TAG=$(cat ./build-tag/release_tag.txt)
+          DOCKER_TAG=$(cat ./build-tag/docker_tag.txt)
           echo "release_tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
+          echo "docker_tag=${DOCKER_TAG}" >> $GITHUB_OUTPUT
           echo "使用统一的构建标签: ${RELEASE_TAG}"
+          echo "Docker 镜像标签: ${DOCKER_TAG}"
 
       - name: 下载所有固件文件
         uses: actions/download-artifact@v4
@@ -481,6 +484,20 @@ jobs:
             | **x86-64 (通用) - ext4 rootfs** | `immortalwrt-x86-64-generic-ext4-rootfs.img.gz` |
             | **x86-64 (通用) - squashfs rootfs** | `immortalwrt-x86-64-generic-squashfs-rootfs.img.gz` |
             | **x86-64 (通用) - rootfs tar** | `immortalwrt-x86-64-generic-rootfs.tar.gz` |
+            
+            ### 🐳 Docker 镜像
+            
+            Docker 镜像已自动构建并推送到 DockerHub：
+            
+            - **镜像地址**: `${{ steps.tag.outputs.docker_tag }}`
+            - **拉取命令**: `docker pull ${{ steps.tag.outputs.docker_tag }}`
+            
+            #### 运行 Docker 容器
+            
+            ```bash
+            # 运行容器（待补充）
+            docker run ....
+            ```
             
             ### 🔐 文件完整性验证
             
