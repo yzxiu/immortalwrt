@@ -268,11 +268,104 @@ jobs:
             logs
           if-no-files-found: ignore
 
-  release:
+  docker-build:
     needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: 下载 x64 rootfs.tar.gz 文件
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware-x64
+          path: ./docker-build
+          pattern: immortalwrt-x86-64-generic-rootfs.tar.gz
+          if-no-files-found: error
+
+      - name: 检查 rootfs.tar.gz 文件
+        run: |
+          if [ ! -f ./docker-build/immortalwrt-x86-64-generic-rootfs.tar.gz ]; then
+            echo "❌ rootfs.tar.gz 文件不存在"
+            exit 1
+          fi
+          ls -lh ./docker-build/
+          echo "✓ rootfs.tar.gz 文件已下载"
+          echo "文件大小: $(du -h ./docker-build/immortalwrt-x86-64-generic-rootfs.tar.gz | cut -f1)"
+
+      - name: 准备 Docker 构建上下文
+        run: |
+          mkdir -p ./docker-build-context
+          # 复制 Dockerfile
+          cp docker-run/Dockerfile ./docker-build-context/
+          # 复制 rootfs.tar.gz
+          cp ./docker-build/immortalwrt-x86-64-generic-rootfs.tar.gz ./docker-build-context/
+          # 复制 network 配置文件
+          cp docker-run/network ./docker-build-context/
+          echo "=== Docker 构建上下文 ==="
+          ls -lh ./docker-build-context/
+
+      - name: 生成构建标签（统一生成，供 Docker 和 Release 使用）
+        id: build-tag
+        run: |
+          BUILD_TAG=$(date +%Y%m%d-%H%M)
+          echo "build_tag=${BUILD_TAG}" >> $GITHUB_OUTPUT
+          echo "docker_tag=q946666800/immortalwrt-2305:${BUILD_TAG}" >> $GITHUB_OUTPUT
+          echo "release_tag=ImmortalWrt-${BUILD_TAG}" >> $GITHUB_OUTPUT
+          echo "构建标签: ${BUILD_TAG}"
+          echo "Docker 标签: q946666800/immortalwrt-2305:${BUILD_TAG}"
+          echo "Release 标签: ImmortalWrt-${BUILD_TAG}"
+          # 保存到文件供 release job 使用
+          mkdir -p ./build-tag
+          echo "${BUILD_TAG}" > ./build-tag/build_tag.txt
+          echo "q946666800/immortalwrt-2305:${BUILD_TAG}" > ./build-tag/docker_tag.txt
+          echo "ImmortalWrt-${BUILD_TAG}" > ./build-tag/release_tag.txt
+
+      - name: 上传构建标签（供 Release Job 使用）
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-tag
+          path: ./build-tag/*.txt
+          if-no-files-found: error
+
+      - name: 登录 DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: 构建并推送 Docker 镜像
+        uses: docker/build-push-action@v5
+        with:
+          context: ./docker-build-context
+          file: ./docker-build-context/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.build-tag.outputs.docker_tag }}
+          cache-from: type=registry,ref=q946666800/immortalwrt-2305:latest
+          cache-to: type=inline
+
+      - name: 显示构建结果
+        run: |
+          echo "✅ Docker 镜像构建并推送成功"
+          echo "镜像标签: ${{ steps.build-tag.outputs.docker_tag }}"
+
+  release:
+    needs: [build, docker-build]
     runs-on: ubuntu-22.04
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     steps:
+      - name: 下载构建标签（复用 docker-build 生成的标签）
+        uses: actions/download-artifact@v4
+        with:
+          name: build-tag
+          path: ./build-tag
+
+      - name: 读取构建标签
+        id: tag
+        run: |
+          RELEASE_TAG=$(cat ./build-tag/release_tag.txt)
+          echo "release_tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
+          echo "使用统一的构建标签: ${RELEASE_TAG}"
+
       - name: 下载所有固件文件
         uses: actions/download-artifact@v4
         with:
@@ -365,10 +458,6 @@ jobs:
           ls -lh
           cd ..
 
-      - name: 生成 Release Tag
-        id: tag
-        run: |
-          echo "release_tag=ImmortalWrt-$(date +%Y%m%d-%H%M)" >> $GITHUB_OUTPUT
 
       - name: 创建 Release 并上传固件
         uses: softprops/action-gh-release@v2
