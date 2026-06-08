@@ -383,7 +383,7 @@ jobs:
         run: |
           mkdir -p release-files
           # 从各平台的 artifact 中复制固件到统一目录
-          find ./all-firmware -type f \( -name "*.bin" -o -name "*.img.gz" -o -name "*.tar.gz" \) | while read file; do
+          find ./all-firmware -type f \( -name "*.bin" -o -name "*.img.gz" -o -name "*.tar.gz" -o -name "*.itb" \) | while read file; do
             cp "$file" release-files/
           done
           echo "=== 准备发布的固件列表 ==="
