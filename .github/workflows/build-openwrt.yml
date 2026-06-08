@@ -195,8 +195,8 @@ jobs:
             tr3000)
               # 查看构建文件
               ls -alh bin/targets/mediatek/filogic/
-              if [ -f bin/targets/mediatek/filogic/immortalwrt-mediatek-filogic-cudy_tr3000-v1-squashfs-sysupgrade.bin ]; then
-                cp bin/targets/mediatek/filogic/immortalwrt-mediatek-filogic-cudy_tr3000-v1-squashfs-sysupgrade.bin firmware/
+              if [ -f bin/targets/mediatek/filogic/immortalwrt-mediatek-filogic-cudy_tr3000-v1-ubootmod-squashfs-sysupgrade.itb ]; then
+                cp bin/targets/mediatek/filogic/immortalwrt-mediatek-filogic-cudy_tr3000-v1-ubootmod-squashfs-sysupgrade.itb firmware/
                 echo "✓ TR3000 固件已提取"
               else
                 echo "✗ TR3000 固件文件不存在"
@@ -390,7 +390,7 @@ jobs:
           ls -lh release-files/
           # 验证固件文件都存在
           [ -f release-files/immortalwrt-mediatek-filogic-glinet_gl-mt3000-squashfs-sysupgrade.bin ] || (echo "❌ MT3000 固件缺失" && exit 1)
-          [ -f release-files/immortalwrt-mediatek-filogic-cudy_tr3000-v1-squashfs-sysupgrade.bin ] || (echo "❌ TR3000 固件缺失" && exit 1)
+          [ -f release-files/immortalwrt-mediatek-filogic-cudy_tr3000-v1-ubootmod-squashfs-sysupgrade.itb ] || (echo "❌ TR3000 固件缺失" && exit 1)
           [ -f release-files/immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz ] || (echo "❌ x64 squashfs-combined-efi 固件缺失" && exit 1)
           [ -f release-files/immortalwrt-x86-64-generic-ext4-rootfs.img.gz ] || (echo "❌ x64 ext4-rootfs 固件缺失" && exit 1)
           [ -f release-files/immortalwrt-x86-64-generic-squashfs-rootfs.img.gz ] || (echo "❌ x64 squashfs-rootfs 固件缺失" && exit 1)
@@ -406,7 +406,7 @@ jobs:
           sha256sum immortalwrt-mediatek-filogic-glinet_gl-mt3000-squashfs-sysupgrade.bin > immortalwrt-mediatek-filogic-glinet_gl-mt3000-squashfs-sysupgrade.bin.sha256
           
           echo "计算 TR3000 固件 SHA256..."
-          sha256sum immortalwrt-mediatek-filogic-cudy_tr3000-v1-squashfs-sysupgrade.bin > immortalwrt-mediatek-filogic-cudy_tr3000-v1-squashfs-sysupgrade.bin.sha256
+          sha256sum immortalwrt-mediatek-filogic-cudy_tr3000-v1-ubootmod-squashfs-sysupgrade.itb > immortalwrt-mediatek-filogic-cudy_tr3000-v1-ubootmod-squashfs-sysupgrade.itb.sha256
           
           echo "计算 x64 squashfs-combined-efi 固件 SHA256..."
           sha256sum immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz > immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz.sha256
@@ -434,7 +434,7 @@ jobs:
             cat immortalwrt-mediatek-filogic-glinet_gl-mt3000-squashfs-sysupgrade.bin.sha256
             echo ""
             echo "### Cudy TR3000 v1"
-            cat immortalwrt-mediatek-filogic-cudy_tr3000-v1-squashfs-sysupgrade.bin.sha256
+            cat immortalwrt-mediatek-filogic-cudy_tr3000-v1-ubootmod-squashfs-sysupgrade.itb.sha256
             echo ""
             echo "### x86-64 (通用)"
             echo "#### squashfs-combined-efi"
@@ -482,7 +482,7 @@ jobs:
             | 设备 | 固件文件 |
             |------|---------|
             | **GL.iNet GL-MT3000** | `immortalwrt-mediatek-filogic-glinet_gl-mt3000-squashfs-sysupgrade.bin` |
-            | **Cudy TR3000 v1** | `immortalwrt-mediatek-filogic-cudy_tr3000-v1-squashfs-sysupgrade.bin` |
+            | **Cudy TR3000 v1** | `immortalwrt-mediatek-filogic-cudy_tr3000-v1-ubootmod-squashfs-sysupgrade.itb` |
             | **x86-64 (通用)** | `immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz` |
             | **x86-64 (通用) - ext4 rootfs** | `immortalwrt-x86-64-generic-ext4-rootfs.img.gz` |
             | **x86-64 (通用) - squashfs rootfs** | `immortalwrt-x86-64-generic-squashfs-rootfs.img.gz` |
@@ -515,14 +515,14 @@ jobs:
             ⚠️ **注意**: 升级前请备份重要配置！
           files: |
             release-files/immortalwrt-mediatek-filogic-glinet_gl-mt3000-squashfs-sysupgrade.bin
-            release-files/immortalwrt-mediatek-filogic-cudy_tr3000-v1-squashfs-sysupgrade.bin
+            release-files/immortalwrt-mediatek-filogic-cudy_tr3000-v1-ubootmod-squashfs-sysupgrade.itb
             release-files/immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz
             release-files/immortalwrt-x86-64-generic-ext4-rootfs.img.gz
             release-files/immortalwrt-x86-64-generic-squashfs-rootfs.img.gz
             release-files/immortalwrt-x86-64-generic-rootfs.tar.gz
             release-files/checksums.txt
             release-files/immortalwrt-mediatek-filogic-glinet_gl-mt3000-squashfs-sysupgrade.bin.sha256
-            release-files/immortalwrt-mediatek-filogic-cudy_tr3000-v1-squashfs-sysupgrade.bin.sha256
+            release-files/immortalwrt-mediatek-filogic-cudy_tr3000-v1-ubootmod-squashfs-sysupgrade.itb.sha256
             release-files/immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz.sha256
             release-files/immortalwrt-x86-64-generic-ext4-rootfs.img.gz.sha256
             release-files/immortalwrt-x86-64-generic-squashfs-rootfs.img.gz.sha256
