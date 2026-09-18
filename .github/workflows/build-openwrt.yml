@@ -96,8 +96,7 @@ jobs:
           ls -la /mnt/openwrt-build/
           df -h /mnt/
 
-      - name: 安装 smartdns-ui 构建依赖（仅 mt3000 需要）
-        if: matrix.platform.name == 'mt3000'
+      - name: 安装 smartdns-ui 构建依赖（node / rust / libclang）
         run: |
           set -e
           # 容器里是 uid 1001（没有 root，apt 用不了），node/rust 都装到 $HOME。
@@ -112,7 +111,8 @@ jobs:
           curl -fsS https://sh.rustup.rs | sh -s -- -y --profile minimal \
               --default-toolchain 1.98.1 --no-modify-path
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          "$HOME/.cargo/bin/rustup" target add aarch64-unknown-linux-musl
+          # 三个目标都是 musl：mt3000/tr3000 = aarch64，x64 = x86_64
+          "$HOME/.cargo/bin/rustup" target add aarch64-unknown-linux-musl x86_64-unknown-linux-musl
 
           export PATH="$HOME/toolchains/node-${NODE_VER}-linux-x64/bin:$HOME/.cargo/bin:$PATH"
           node --version && npm --version && rustc --version
