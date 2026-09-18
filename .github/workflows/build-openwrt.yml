@@ -100,24 +100,24 @@ jobs:
         if: matrix.platform.name == 'mt3000'
         run: |
           set -e
-          # bindgen 解析 C 头文件需要 libclang
-          apt-get update
-          apt-get install -y --no-install-recommends libclang-dev clang xz-utils ca-certificates
-
-          # 前端是 Next.js，Ubuntu 22.04 apt 里的 node 太旧 → 用官方静态包
+          # 容器里是 uid 1001（没有 root，apt 用不了），node/rust 都装到 $HOME。
+          # 镜像自带 clang/libclang-14（bindgen 需要）、curl 和 xz，无需再装系统包。
           NODE_VER=v24.21.0
-          curl -fsSL -o /opt/node.tar.xz https://nodejs.org/dist/${NODE_VER}/node-${NODE_VER}-linux-x64.tar.xz
-          mkdir -p /opt/node && tar -xJf /opt/node.tar.xz -C /opt/node --strip-components=1
-          echo "/opt/node/bin" >> $GITHUB_PATH
+          mkdir -p "$HOME/toolchains" && cd "$HOME/toolchains"
+          curl -fsSLO "https://nodejs.org/dist/${NODE_VER}/node-${NODE_VER}-linux-x64.tar.xz"
+          tar -xJf "node-${NODE_VER}-linux-x64.tar.xz" && rm -f "node-${NODE_VER}-linux-x64.tar.xz"
+          echo "$HOME/toolchains/node-${NODE_VER}-linux-x64/bin" >> $GITHUB_PATH
 
           # 插件是 Rust，本分支树里的 lang/rust 只有 1.85（插件依赖树要求 >= 1.88）
-          curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal \
+          curl -fsS https://sh.rustup.rs | sh -s -- -y --profile minimal \
               --default-toolchain 1.98.1 --no-modify-path
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
           "$HOME/.cargo/bin/rustup" target add aarch64-unknown-linux-musl
 
-          export PATH="/opt/node/bin:$HOME/.cargo/bin:$PATH"
-          node --version && npm --version && cargo --version
+          export PATH="$HOME/toolchains/node-${NODE_VER}-linux-x64/bin:$HOME/.cargo/bin:$PATH"
+          node --version && npm --version && rustc --version
+          ls /usr/lib/x86_64-linux-gnu/libclang*.so* >/dev/null \
+              || echo "警告：找不到 libclang，bindgen 可能失败"
 
       - name: 更新和安装 feeds
         run: |
