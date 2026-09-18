@@ -96,6 +96,29 @@ jobs:
           ls -la /mnt/openwrt-build/
           df -h /mnt/
 
+      - name: 安装 smartdns-ui 构建依赖（仅 mt3000 需要）
+        if: matrix.platform.name == 'mt3000'
+        run: |
+          set -e
+          # bindgen 解析 C 头文件需要 libclang
+          apt-get update
+          apt-get install -y --no-install-recommends libclang-dev clang xz-utils ca-certificates
+
+          # 前端是 Next.js，Ubuntu 22.04 apt 里的 node 太旧 → 用官方静态包
+          NODE_VER=v24.21.0
+          curl -fsSL -o /opt/node.tar.xz https://nodejs.org/dist/${NODE_VER}/node-${NODE_VER}-linux-x64.tar.xz
+          mkdir -p /opt/node && tar -xJf /opt/node.tar.xz -C /opt/node --strip-components=1
+          echo "/opt/node/bin" >> $GITHUB_PATH
+
+          # 插件是 Rust，本分支树里的 lang/rust 只有 1.85（插件依赖树要求 >= 1.88）
+          curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal \
+              --default-toolchain 1.98.1 --no-modify-path
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          "$HOME/.cargo/bin/rustup" target add aarch64-unknown-linux-musl
+
+          export PATH="/opt/node/bin:$HOME/.cargo/bin:$PATH"
+          node --version && npm --version && cargo --version
+
       - name: 更新和安装 feeds
         run: |
           ./scripts/feeds update -a
